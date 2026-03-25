@@ -25,7 +25,7 @@ Para realizar a distribuição:
 4. Peça para o funcionário abrir o `Install.bat`. Fim!
 
 ## Manutenção em Produção
-Ao subir um novo `wallpaper.jpg` no servidor/github pages configurado, em até 4h o PC de todos os funcionários que o estão rodando sincronizará sozinho. Caso precisem aplicar de imediato, podem reiniciar a máquina ou re-rodar o app.
+Ao subir um novo `wallpaper.jpg` no servidor/github pages configurado, em até 2h o PC de todos os funcionários que o estão rodando sincronizará sozinho. Caso precisem aplicar de imediato, podem reiniciar a máquina ou re-rodar o app.
 
 ## Desinstalação
-Os funcionários (ou o departamento de TI) podem rodar o script `Uninstall.bat` diretamente ou através de um disparo remoto. Ele finaliza a árvore do aplicativo na memória RAM e limpa as pastas de arquivos escondidas do AppData (Startup & Workspace).
+Os funcionários podem rodar o script `Uninstall.bat` diretamente ou através de um disparo remoto. Ele finaliza a árvore do aplicativo na memória RAM e limpa as pastas de arquivos escondidas do AppData (Startup & Workspace).
