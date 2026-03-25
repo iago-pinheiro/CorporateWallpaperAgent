@@ -12,7 +12,6 @@ Agente silencioso em C# para atualização automatizada e periódica do Wallpape
 ## Componentes do Sistema (Repositório)
 
 1. `WallpaperAgent.cs`: O código-fonte C# nativo e lógico. 
-2. `Build.bat`: Script de compilação C# usando o compilador pré-existente e padrão do Windows 10/11 (`csc.exe`). 
 3. `Install.bat`: Script em Batch amigável que atua como o setup de instalação para as máquinas (embora o próprio `WallpaperAgent.exe` consiga se "auto-instalar" se dado os 2 cliques diretamente nele).
 4. `Uninstall.bat`: Script limpador, encerra as instâncias rodando e apaga o agente da máquina do funcionário sem deixar rastros.
 
