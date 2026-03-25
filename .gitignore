@@ -1,0 +1,7 @@
+# Ignora os executáveis gerados localmente e arquivos temporários do usuário
+*.exe
+*.lnk
+*.zip
+.vs/
+bin/
+obj/
