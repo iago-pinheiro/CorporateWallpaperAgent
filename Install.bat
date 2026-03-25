@@ -3,7 +3,7 @@ title Ativando o Papel de Parede Corporativo
 color 0B
 echo.
 echo =================================================================
-echo       BEM-VINDO: AGENTE DE WIDGETS E PAPEL DE PAREDE
+echo       BEM-VINDO: AGENTE DE PAPEL DE PAREDE
 echo =================================================================
 echo.
 echo Ola! Estamos configurando o seu novo papel de parede dinamico.

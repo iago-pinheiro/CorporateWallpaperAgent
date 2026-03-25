@@ -36,7 +36,6 @@ namespace CorporateWallpaper
                 string exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
                 string targetExePath = Path.Combine(workDir, "WallpaperAgent.exe");
 
-                // SE FOR EXECUTADO FORA DA PASTA DE DESTINO (EX: DA PASTA DOWNLOADS), FUNCIONA COMO INSTALADOR!
                 if (!exePath.Equals(targetExePath, StringComparison.OrdinalIgnoreCase))
                 {
                     // Copia o próprio .exe para a pasta do sistema escondida
