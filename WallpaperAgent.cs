@@ -3,9 +3,30 @@ using System.IO;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Security.Cryptography;
 
 namespace CorporateWallpaper
 {
+    /// <summary>
+    /// WebClient com timeout configurável para evitar travamento em conexões lentas.
+    /// </summary>
+    class TimedWebClient : WebClient
+    {
+        public int TimeoutMs { get; set; }
+
+        public TimedWebClient(int timeoutMs = 30000)
+        {
+            TimeoutMs = timeoutMs;
+        }
+
+        protected override WebRequest GetWebRequest(Uri address)
+        {
+            WebRequest request = base.GetWebRequest(address);
+            request.Timeout = TimeoutMs;
+            return request;
+        }
+    }
+
     class Program
     {
         // Import da API do Windows para manipular a Área de Trabalho (Wallpaper)
@@ -16,61 +37,50 @@ namespace CorporateWallpaper
         private const int SPIF_UPDATEINIFILE = 0x01;
         private const int SPIF_SENDWININICHANGE = 0x02;
 
-        // O LINK ESTÁTICO DO GITHUB PAGES
-        private const string WALLPAPER_URL = "https://iago-pinheiro.github.io/wallpaper-download/wallpaper.jpg";
+        // URL padrão (fallback caso config.txt não exista)
+        private const string DEFAULT_WALLPAPER_URL = "https://iago-pinheiro.github.io/wallpaper-download/wallpaper.jpg";
+
+        // Intervalo entre verificações (em horas)
+        private const int CHECK_INTERVAL_HOURS = 4;
+
+        // Máximo de linhas no arquivo de log (rotação automática)
+        private const int MAX_LOG_LINES = 100;
+
+        // Versão do agente (para rastreamento)
+        private const string AGENT_VERSION = "2.0.0";
+
+        // Caminhos globais (inicializados no Main)
+        private static string workDir;
+        private static string logPath;
 
         static void Main(string[] args)
         {
             try
             {
-                // Este diretório sempre existe no Windows 10/11: C:\Users\[Usuario]\AppData\Local
+                // Diretório padrão: C:\Users\[Usuario]\AppData\Local\CorpWallpaperSystem
                 string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                string workDir = Path.Combine(localAppData, "CorpWallpaperSystem");
+                workDir = Path.Combine(localAppData, "CorpWallpaperSystem");
+                logPath = Path.Combine(workDir, "wallpaper_agent.log");
+
                 string localImagePath = Path.Combine(workDir, "wallpaper.jpg");
+                string tempImagePath = Path.Combine(workDir, "wallpaper_download.tmp");
+                string configPath = Path.Combine(workDir, "config.txt");
 
                 if (!Directory.Exists(workDir))
                 {
                     Directory.CreateDirectory(workDir);
                 }
 
-                string exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
-                string targetExePath = Path.Combine(workDir, "WallpaperAgent.exe");
+                Log("=== Agente iniciado (v" + AGENT_VERSION + ") ===");
 
-                if (!exePath.Equals(targetExePath, StringComparison.OrdinalIgnoreCase))
-                {
-                    // Copia o próprio .exe para a pasta do sistema escondida
-                    File.Copy(exePath, targetExePath, true);
-
-                    // Cria um atalho na pasta Inicializar (Startup) usando um script VBS temporário (nativamente no Windows)
-                    string startupDir = Environment.GetFolderPath(Environment.SpecialFolder.Startup);
-                    string shortcutPath = Path.Combine(startupDir, "CorporateWallpaper.lnk");
-                    string vbsPath = Path.Combine(Path.GetTempPath(), "CreateShortcut.vbs");
-                    
-                    string vbsCode = "Set oWS = WScript.CreateObject(\"WScript.Shell\")\r\n" +
-                                     "sLinkFile = \"" + shortcutPath + "\"\r\n" +
-                                     "Set oLink = oWS.CreateShortcut(sLinkFile)\r\n" +
-                                     "oLink.TargetPath = \"" + targetExePath + "\"\r\n" +
-                                     "oLink.WorkingDirectory = \"" + workDir + "\"\r\n" +
-                                     "oLink.Description = \"Wallpaper Corporativo\"\r\n" +
-                                     "oLink.Save";
-                    
-                    File.WriteAllText(vbsPath, vbsCode);
-                    var process = System.Diagnostics.Process.Start("cscript.exe", "/nologo \"" + vbsPath + "\"");
-                    process.WaitForExit();
-                    File.Delete(vbsPath);
-
-                    // Executa a versão instalada para já aplicar o wallpaper e encerra este instalador
-                    System.Diagnostics.Process.Start(targetExePath);
-                    return;
-                }
-
-                // Garante que apenas uma instância rode por vez (evita vazamento de memória com vários loops)
+                // Garante que apenas uma instância rode por vez
                 bool createdNew;
                 using (Mutex mutex = new Mutex(true, "CorporateWallpaperAgentMutex", out createdNew))
                 {
                     if (!createdNew)
                     {
-                        return; // Já existe um agente rodando
+                        Log("Outra instancia ja esta rodando. Encerrando esta.");
+                        return;
                     }
 
                     // Loop infinito para atualizar o wallpaper periodicamente
@@ -78,35 +88,226 @@ namespace CorporateWallpaper
                     {
                         try
                         {
-                            // Download da imagem silenciosamente (Tolerância a faltas de rede embutida via try/catch)
-                            // Força o uso do TLS 1.2, necessário para baixar do GitHub Pages
-                            ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072;
-                            using (WebClient client = new WebClient())
+                            // Ler URL do config.txt (ou usar fallback hardcoded)
+                            string wallpaperUrl = LoadConfigUrl(configPath);
+                            Log("Verificando wallpaper em: " + wallpaperUrl);
+
+                            // Habilitar TLS 1.2 + TLS 1.3 para compatibilidade futura
+                            ServicePointManager.SecurityProtocol =
+                                (SecurityProtocolType)3072 |   // TLS 1.2
+                                (SecurityProtocolType)12288;   // TLS 1.3
+
+                            // Download para arquivo temporário (nunca sobrescreve o wallpaper diretamente)
+                            using (TimedWebClient client = new TimedWebClient(30000))
                             {
-                                client.Headers.Add("User-Agent", "Mozilla/5.0 CorporateWallpaperAgent/1.0");
-                                client.DownloadFile(WALLPAPER_URL, localImagePath);
+                                // Herdar proxy do sistema (essencial em ambientes corporativos)
+                                client.Proxy = WebRequest.GetSystemWebProxy();
+                                client.Proxy.Credentials = CredentialCache.DefaultCredentials;
+                                client.Headers.Add("User-Agent", "Mozilla/5.0 CorporateWallpaperAgent/" + AGENT_VERSION);
+
+                                client.DownloadFile(wallpaperUrl, tempImagePath);
                             }
 
-                            // Se passou da linha acima, a imagem nova (ou mesma) já foi baixada.
-                            // Agora, forçamos o Windows a aplicar a imagem sem precisar de permissões de Administrador.
+                            // Validar: arquivo deve ser JPEG válido (magic bytes: FF D8 FF)
+                            if (!IsValidJpeg(tempImagePath))
+                            {
+                                Log("AVISO: Arquivo baixado nao e uma imagem JPEG valida. Ignorando.");
+                                SafeDelete(tempImagePath);
+                                goto waitAndRetry;
+                            }
+
+                            // Comparar hash para evitar re-aplicar o mesmo wallpaper
+                            if (FilesAreEqual(tempImagePath, localImagePath))
+                            {
+                                Log("Wallpaper verificado. Sem alteracoes.");
+                                SafeDelete(tempImagePath);
+                                goto waitAndRetry;
+                            }
+
+                            // Tudo validado: substituir o wallpaper antigo pelo novo
+                            File.Copy(tempImagePath, localImagePath, true);
+                            SafeDelete(tempImagePath);
+
+                            // Aplicar como papel de parede do Windows
                             if (File.Exists(localImagePath))
                             {
-                                SystemParametersInfo(SPI_SETDESKWALLPAPER, 0, localImagePath, SPIF_UPDATEINIFILE | SPIF_SENDWININICHANGE);
+                                int result = SystemParametersInfo(
+                                    SPI_SETDESKWALLPAPER, 0, localImagePath,
+                                    SPIF_UPDATEINIFILE | SPIF_SENDWININICHANGE
+                                );
+
+                                if (result != 0)
+                                {
+                                    Log("Wallpaper atualizado com sucesso.");
+                                }
+                                else
+                                {
+                                    Log("AVISO: SystemParametersInfo retornou 0. Wallpaper pode nao ter sido aplicado.");
+                                }
                             }
                         }
-                        catch (Exception)
+                        catch (WebException ex)
                         {
-                            // Silenciamos os erros de propósito (falta de rede, etc).
+                            Log("Erro de rede: " + ex.Message);
+                            SafeDelete(tempImagePath);
+                        }
+                        catch (Exception ex)
+                        {
+                            Log("Erro no ciclo: " + ex.Message);
+                            SafeDelete(tempImagePath);
                         }
 
-                        // Aguarda 4 horas antes de tentar atualizar de novo (4 horas = 14400000 ms)
-                        Thread.Sleep(TimeSpan.FromHours(4));
+                        waitAndRetry:
+                        Thread.Sleep(TimeSpan.FromHours(CHECK_INTERVAL_HOURS));
                     }
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Erro geral silencioso
+                try { Log("Erro fatal: " + ex.Message); } catch { }
+            }
+        }
+
+        /// <summary>
+        /// Lê a URL do wallpaper a partir do config.txt.
+        /// Formato esperado: url=https://exemplo.com/wallpaper.jpg
+        /// Se o arquivo não existir ou não tiver URL válida, retorna a URL padrão.
+        /// </summary>
+        static string LoadConfigUrl(string configPath)
+        {
+            try
+            {
+                if (File.Exists(configPath))
+                {
+                    string[] lines = File.ReadAllLines(configPath);
+                    foreach (string line in lines)
+                    {
+                        string trimmed = line.Trim();
+
+                        // Ignorar comentários e linhas vazias
+                        if (string.IsNullOrEmpty(trimmed) || trimmed.StartsWith("#"))
+                            continue;
+
+                        if (trimmed.StartsWith("url=", StringComparison.OrdinalIgnoreCase))
+                        {
+                            string url = trimmed.Substring(4).Trim();
+                            if (!string.IsNullOrEmpty(url) && url.StartsWith("http", StringComparison.OrdinalIgnoreCase))
+                            {
+                                return url;
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log("Aviso: Erro ao ler config.txt: " + ex.Message);
+            }
+
+            return DEFAULT_WALLPAPER_URL;
+        }
+
+        /// <summary>
+        /// Verifica se o arquivo é um JPEG válido checando os magic bytes (FF D8 FF).
+        /// </summary>
+        static bool IsValidJpeg(string filePath)
+        {
+            try
+            {
+                FileInfo fi = new FileInfo(filePath);
+                if (fi.Length < 3) return false;
+
+                using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+                {
+                    byte[] header = new byte[3];
+                    fs.Read(header, 0, 3);
+                    return header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Compara dois arquivos por hash MD5 para detectar se houve mudança.
+        /// </summary>
+        static bool FilesAreEqual(string path1, string path2)
+        {
+            if (!File.Exists(path1) || !File.Exists(path2))
+                return false;
+
+            try
+            {
+                byte[] hash1, hash2;
+
+                using (MD5 md5 = MD5.Create())
+                using (FileStream stream = File.OpenRead(path1))
+                {
+                    hash1 = md5.ComputeHash(stream);
+                }
+
+                using (MD5 md5 = MD5.Create())
+                using (FileStream stream = File.OpenRead(path2))
+                {
+                    hash2 = md5.ComputeHash(stream);
+                }
+
+                if (hash1.Length != hash2.Length) return false;
+
+                for (int i = 0; i < hash1.Length; i++)
+                {
+                    if (hash1[i] != hash2[i]) return false;
+                }
+
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Deleta um arquivo de forma segura (ignora erros).
+        /// </summary>
+        static void SafeDelete(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Registra uma mensagem no log com timestamp.
+        /// Faz rotação automática mantendo apenas as últimas MAX_LOG_LINES linhas.
+        /// </summary>
+        static void Log(string message)
+        {
+            try
+            {
+                string logLine = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " | " + message;
+                File.AppendAllText(logPath, logLine + Environment.NewLine);
+
+                // Rotação: manter apenas as últimas N linhas
+                if (File.Exists(logPath))
+                {
+                    string[] lines = File.ReadAllLines(logPath);
+                    if (lines.Length > MAX_LOG_LINES)
+                    {
+                        string[] trimmed = new string[MAX_LOG_LINES];
+                        Array.Copy(lines, lines.Length - MAX_LOG_LINES, trimmed, 0, MAX_LOG_LINES);
+                        File.WriteAllLines(logPath, trimmed);
+                    }
+                }
+            }
+            catch
+            {
+                // Falha no log não é crítica
             }
         }
     }

@@ -1,0 +1,98 @@
+# =============================================================================
+# GitHub Actions: Release Automático do CorporateWallpaperAgent
+# =============================================================================
+# Dispara ao criar uma tag no formato v*.*.* (ex: v2.0.0)
+# Compila o C# no Windows, monta o ZIP de distribuição e cria o Release no GitHub.
+# =============================================================================
+
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Extrair versão da tag
+        id: version
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $version = $tag -replace '^v', ''
+          echo "TAG=$tag" >> $env:GITHUB_OUTPUT
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+          Write-Host "Versão detectada: $version"
+
+      - name: Compilar WallpaperAgent.exe
+        shell: cmd
+        run: |
+          set CSC_PATH=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe
+          if not exist "%CSC_PATH%" set CSC_PATH=%WINDIR%\Microsoft.NET\Framework\v4.0.30319\csc.exe
+          "%CSC_PATH%" /nologo /target:winexe /optimize /out:WallpaperAgent.exe WallpaperAgent.cs
+          if errorlevel 1 exit /b 1
+          if not exist "WallpaperAgent.exe" exit /b 1
+          echo Compilação OK!
+
+      - name: Verificar EXE gerado
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "WallpaperAgent.exe")) {
+            Write-Error "WallpaperAgent.exe não foi gerado!"
+            exit 1
+          }
+          $file = Get-Item "WallpaperAgent.exe"
+          Write-Host "EXE gerado: $($file.Length) bytes"
+
+      - name: Montar pacote de distribuição (ZIP)
+        shell: pwsh
+        run: |
+          $distDir = "dist"
+          New-Item -ItemType Directory -Path $distDir -Force | Out-Null
+
+          # Arquivos para o colaborador
+          Copy-Item "WallpaperAgent.exe" -Destination $distDir
+          Copy-Item "Install.bat" -Destination $distDir
+          Copy-Item "Uninstall.bat" -Destination $distDir
+          Copy-Item "README.md" -Destination $distDir
+
+          # Config opcional (se existir no repo)
+          if (Test-Path "config.txt") {
+            Copy-Item "config.txt" -Destination $distDir
+          }
+
+          $zipName = "CorporateWallpaperAgent-${{ steps.version.outputs.TAG }}.zip"
+          Compress-Archive -Path "$distDir\*" -DestinationPath $zipName -Force
+          Write-Host "ZIP criado: $zipName"
+
+      - name: Criar Release no GitHub
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Corporate Wallpaper Agent ${{ steps.version.outputs.TAG }}"
+          body: |
+            ## 📦 Corporate Wallpaper Agent ${{ steps.version.outputs.TAG }}
+
+            ### Instalação
+            1. Baixe o arquivo `.zip` abaixo
+            2. **Extraia** todos os arquivos para uma pasta
+            3. Dê duplo clique em `Install.bat`
+            4. Pronto! O papel de parede será atualizado automaticamente.
+
+            ### Desinstalação
+            Rode o `Uninstall.bat` que está dentro do ZIP.
+
+            ---
+            _Release gerado automaticamente via GitHub Actions._
+          files: |
+            CorporateWallpaperAgent-${{ steps.version.outputs.TAG }}.zip
+          draft: false
+          prerelease: false

@@ -15,10 +15,16 @@ if not exist "%CSC_PATH%" (
     exit /b
 )
 
-:: O parametro /target:winexe eh MAGICO: Significa que o app criado vai rodar TOTALMENTE sem janela de prompt! 
+:: Limpar EXE antigo para evitar usar versao desatualizada caso a compilacao falhe
+if exist "WallpaperAgent.exe" del "WallpaperAgent.exe" >nul 2>&1
+
+:: O parametro /target:winexe faz o app rodar sem janela de prompt
 "%CSC_PATH%" /nologo /target:winexe /optimize /out:WallpaperAgent.exe WallpaperAgent.cs
 
 if errorlevel 1 goto erro
+
+:: Verificar se o EXE realmente foi gerado
+if not exist "WallpaperAgent.exe" goto erro
 
 echo.
 echo SUCESSO!
@@ -30,7 +36,7 @@ goto fim
 
 :erro
 echo.
-echo Encontramos algum erro no fechamento do app C#, verifique ali em cima!
+echo [ERRO] Compilacao falhou! Verifique os erros acima.
 
 :fim
 pause
