@@ -17,85 +17,72 @@ Agente silencioso em C# para atualização automatizada do papel de parede corpo
 
 ---
 
-## Arquitetura
-
-```
-[RH sobe imagem no S3]
-        ↓
-[AWS S3 - Link público fixo]
-        ↓
-[WallpaperAgent.exe - roda em background nas máquinas]
-        ↓
-[Papel de parede atualizado silenciosamente]
-```
-
-O agente consome uma URL pública configurada no `config.txt`. Quando o RH quiser trocar o wallpaper, basta fazer upload de uma nova imagem com o mesmo nome no S3 — todas as máquinas atualizam em até 4 horas automaticamente.
-
----
-
 ## Arquivos do Projeto
 
 | Arquivo | Para quem | Função |
 |---|---|---|
 | `WallpaperAgent.cs` | TI / Dev | Código-fonte C# do agente |
-| `Build.bat` | TI / Dev | Compila o `.cs` em `.exe` usando o compilador nativo do Windows |
-| `Install.bat` | Colaborador | Instalador amigável — duplo clique e pronto |
+| `Build.bat` | TI / Dev | Compila o `.cs` e gera o ZIP de distribuição pronto |
+| `Install.bat` | Interno | Script de instalação (empacotado dentro do ZIP) |
 | `Uninstall.bat` | Colaborador / TI | Remove tudo do computador |
-| `config.txt` | TI (não sobe pro GitHub) | Define a URL pública do wallpaper (S3 ou outro servidor) |
-
-> ⚠️ O `config.txt` com a URL corporativa está no `.gitignore` e **não é versionado**. Ele é gerado internamente pela TI antes de empacotar o ZIP de distribuição.
+| `config.txt` | TI (opcional) | Personaliza a URL do wallpaper sem recompilar |
 
 ---
 
 ## 🔧 Guia para o TI (Preparação e Distribuição)
 
-### Passo 1: Configurar o servidor de imagens
+### Passo 1: Configurar a URL do Wallpaper
 
-A URL do wallpaper é definida no `config.txt` (não versionado):
+A URL padrão está em `WallpaperAgent.cs`:
 
-```ini
-# URL pública do wallpaper (AWS S3, GitHub Pages, ou outro servidor público)
-url=https://seu-bucket.s3.amazonaws.com/public/wallpaper.jpg
+```csharp
+private const string DEFAULT_WALLPAPER_URL = "https://seu-servidor.com/wallpaper.jpg";
 ```
 
-**Requisito do servidor:** A URL precisa ser de acesso público e anônimo (sem autenticação), para que o agente nas máquinas dos colaboradores consiga fazer o download sem precisar de login.
+**Opção A** — Alterar no código e recompilar (permanente).
 
-### Passo 2: Compilar
+**Opção B** — Criar um `config.txt` na mesma pasta do `Build.bat` (não precisa recompilar):
+
+```ini
+# URL do wallpaper corporativo (qualquer servidor com link público direto)
+url=https://seu-servidor.com/wallpaper.jpg
+```
+
+> O agente suporta qualquer URL pública que devolva diretamente um arquivo `.jpg` ou `.png`. O `config.txt` sobrescreve a URL padrão do código sem necessidade de recompilação.
+
+### Passo 2: Compilar e Empacotar
 
 1. Dê duplo clique em **`Build.bat`**
-2. Ele usa o compilador C# nativo do Windows (`csc.exe` do .NET Framework 4.x) — não precisa instalar nada
-3. Se tudo der certo, aparece `Compilação OK!` e o arquivo `WallpaperAgent.exe` é gerado
+2. Ele compila o agente e gera automaticamente o arquivo **`WallpaperCorporativo.zip`** pronto para distribuição
+3. Se houver um `config.txt` na pasta, ele é incluído automaticamente no ZIP
 
 ### Passo 3: Testar no seu PC
 
-1. Rode **`Install.bat`** com duplo clique
-2. A tela mostrará o progresso e fechará sozinha
-3. Verifique se o papel de parede mudou
-4. Para conferir os logs:
+Extraia o ZIP gerado, dê duplo clique em `SOMENTE CLIQUE AQUI PARA INSTALAR.bat` e verifique se o papel de parede mudou.
 
+Para conferir os logs:
 ```
 %LOCALAPPDATA%\CorpWallpaperSystem\wallpaper_agent.log
 ```
 
 ### Passo 4: Distribuir para os Colaboradores
 
-Monte um **ZIP** contendo:
+Envie o **`WallpaperCorporativo.zip`** gerado pelo `Build.bat` por e-mail, intranet, pendrive ou compartilhamento de rede.
 
+Conteúdo do ZIP:
 ```
 📁 WallpaperCorporativo.zip
- ├── CLIQUE AQUI PARA INSTALAR.bat   ← renomeado do Install.bat
+ ├── SOMENTE CLIQUE AQUI PARA INSTALAR.bat
  ├── WallpaperAgent.exe
- ├── config.txt                       ← com a URL do S3
+ ├── config.txt   ← (incluído automaticamente se existir)
  └── Uninstall.bat
 ```
 
-Envie por e-mail, intranet, pendrive ou compartilhamento de rede.
-
-> **Dica**: Os arquivos `.cs`, `Build.bat` e `Build_e_Empacotar.bat` são internos do TI — **não** envie para os colaboradores.
+> **Dica**: Os arquivos `.cs` e `Build.bat` são internos do TI — **não** envie para os colaboradores.
 
 ### Passo 5: Atualizar o Wallpaper no Futuro
 
-1. Faça upload da nova imagem no servidor (ex: S3), **com o mesmo nome de arquivo**
+1. Suba a nova imagem no servidor configurado (com o mesmo nome de arquivo)
 2. Em até **4 horas**, todos os PCs com o agente sincronizam automaticamente
 3. Para aplicar imediatamente: peça para o colaborador **reiniciar o PC** ou rodar o instalador novamente
 
@@ -106,7 +93,7 @@ Envie por e-mail, intranet, pendrive ou compartilhamento de rede.
 ### Instalação
 
 1. **Extraia** o ZIP recebido para qualquer pasta (ex: Área de Trabalho)
-2. Dê **duplo clique** em `CLIQUE AQUI PARA INSTALAR.bat`
+2. Dê **duplo clique** em `SOMENTE CLIQUE AQUI PARA INSTALAR.bat`
 3. Uma tela azul aparecerá mostrando o progresso e fechará sozinha em segundos
 4. Seu papel de parede será atualizado em instantes — **pronto!**
 
@@ -131,6 +118,7 @@ Você pode apagar o ZIP e a pasta de extração após a instalação sem problem
 
 1. Dê **duplo clique** em `Uninstall.bat` (peça ao TI se não tiver o arquivo)
 2. Pronto — o agente é removido completamente, sem deixar rastros
+3. Seu papel de parede atual **não será alterado** após a desinstalação
 
 ---
 
@@ -142,8 +130,7 @@ Você pode apagar o ZIP e a pasta de extração após a instalação sem problem
 | "Acesso negado" no instalador | Agente anterior ainda rodando | O instalador tenta 3 vezes automaticamente. Se persistir, reinicie o PC |
 | Wallpaper fica preto/corrompido | Não deveria acontecer na v2.0 | O agente valida JPEG/PNG antes de aplicar. Cheque o log |
 | Funciona no PC mas não no notebook | Proxy corporativo | O agente usa proxy do sistema automaticamente |
-| Antivírus bloqueando | Falso positivo | Adicione exceção para `%LOCALAPPDATA%\CorpWallpaperSystem\` |
-| URL do S3 retorna erro 403 | Bucket sem permissão pública | Verifique a Bucket Policy do S3 (leitura pública nos objetos) |
+| Antivírus bloqueando | Falso positivo (EXE que baixa arquivos) | Adicione exceção para `%LOCALAPPDATA%\CorpWallpaperSystem\` |
 
 ### Verificar logs
 
@@ -154,9 +141,9 @@ Você pode apagar o ZIP e a pasta de extração após a instalação sem problem
 Exemplo de log saudável:
 ```
 2026-04-27 09:00:00 | === Agente iniciado (v2.0.0) ===
-2026-04-27 09:00:01 | Verificando wallpaper em: https://bucket.s3.amazonaws.com/public/wallpaper.jpg
+2026-04-27 09:00:01 | Verificando wallpaper em: https://seu-servidor.com/wallpaper.jpg
 2026-04-27 09:00:03 | Wallpaper atualizado com sucesso.
-2026-04-27 13:00:03 | Verificando wallpaper em: https://bucket.s3.amazonaws.com/public/wallpaper.jpg
+2026-04-27 13:00:03 | Verificando wallpaper em: https://seu-servidor.com/wallpaper.jpg
 2026-04-27 13:00:04 | Wallpaper verificado. Sem alteracoes.
 ```
 
