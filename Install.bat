@@ -73,19 +73,15 @@ if exist "%STARTUP_DIR%\Wallpaper Corp.lnk" (
     del /f /q "%STARTUP_DIR%\Wallpaper Corp.lnk" >nul 2>&1
 )
 
-:: 7. Criar atalho no Startup do Windows
+:: 7. Criar atalho no Startup do Windows via PowerShell
 echo [+] Registrando rotina silenciosa de atualizacao automatica...
-set VBS_SCRIPT="%temp%\CreateShortcut.vbs"
-echo Set oWS = WScript.CreateObject("WScript.Shell") > %VBS_SCRIPT%
-echo sLinkFile = "%STARTUP_DIR%\%SHORTCUT_NAME%" >> %VBS_SCRIPT%
-echo Set oLink = oWS.CreateShortcut(sLinkFile) >> %VBS_SCRIPT%
-echo oLink.TargetPath = "%TARGET_DIR%\%EXE_NAME%" >> %VBS_SCRIPT%
-echo oLink.WorkingDirectory = "%TARGET_DIR%" >> %VBS_SCRIPT%
-echo oLink.Description = "Sincronizador Silencioso do Wallpaper Corporativo" >> %VBS_SCRIPT%
-echo oLink.Save >> %VBS_SCRIPT%
-
-cscript /nologo %VBS_SCRIPT%
-del %VBS_SCRIPT% >nul 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command ^
+  "$ws = New-Object -ComObject WScript.Shell; ^
+   $lnk = $ws.CreateShortcut('%STARTUP_DIR%\%SHORTCUT_NAME%'); ^
+   $lnk.TargetPath = '%TARGET_DIR%\%EXE_NAME%'; ^
+   $lnk.WorkingDirectory = '%TARGET_DIR%'; ^
+   $lnk.Description = 'Sincronizador Silencioso do Wallpaper Corporativo'; ^
+   $lnk.Save()"
 
 :: 8. Verificar se o atalho foi criado
 if not exist "%STARTUP_DIR%\%SHORTCUT_NAME%" (
