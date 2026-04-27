@@ -6,3 +6,9 @@
 bin/
 obj/
 .agent/
+
+# Ignora o config.txt de distribuição (contém URL interna do S3 corporativo)
+config.txt
+
+# Script interno de TI para empacotamento (nao relevante para o repositório público)
+Build_e_Empacotar.bat

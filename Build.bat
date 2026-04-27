@@ -10,7 +10,7 @@ if not exist "%CSC_PATH%" (
 )
 
 if not exist "%CSC_PATH%" (
-    echo [ERROR] Compilador C# nao encontrado (Impossivel). Verifique se este eh um PC com Windows.
+    echo [ERROR] Compilador C# nao encontrado. Verifique se este eh um PC com Windows.
     pause
     exit /b
 )

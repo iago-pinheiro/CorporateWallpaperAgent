@@ -111,7 +111,7 @@ namespace CorporateWallpaper
                             // Validar: arquivo deve ser JPEG válido (magic bytes: FF D8 FF)
                             if (!IsValidJpeg(tempImagePath))
                             {
-                                Log("AVISO: Arquivo baixado nao e uma imagem JPEG valida. Ignorando.");
+                                Log("AVISO: Arquivo baixado nao e uma imagem JPEG/PNG valida. Ignorando.");
                                 SafeDelete(tempImagePath);
                                 goto waitAndRetry;
                             }
@@ -208,7 +208,7 @@ namespace CorporateWallpaper
         }
 
         /// <summary>
-        /// Verifica se o arquivo é um JPEG válido checando os magic bytes (FF D8 FF).
+        /// Verifica se o arquivo é um JPEG ou PNG válido checando os magic bytes iniciais.
         /// </summary>
         static bool IsValidJpeg(string filePath)
         {
@@ -219,9 +219,13 @@ namespace CorporateWallpaper
 
                 using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
                 {
-                    byte[] header = new byte[3];
-                    fs.Read(header, 0, 3);
-                    return header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
+                    byte[] header = new byte[8];
+                    fs.Read(header, 0, 8);
+                    
+                    bool isJpg = header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
+                    bool isPng = header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47;
+                    
+                    return isJpg || isPng;
                 }
             }
             catch

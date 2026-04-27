@@ -59,16 +59,14 @@ jobs:
           $distDir = "dist"
           New-Item -ItemType Directory -Path $distDir -Force | Out-Null
 
-          # Arquivos para o colaborador
+          # Renomeia o Install.bat para nome amigavel ao colaborador
           Copy-Item "WallpaperAgent.exe" -Destination $distDir
-          Copy-Item "Install.bat" -Destination $distDir
+          Copy-Item "Install.bat" -Destination "$distDir\CLIQUE AQUI PARA INSTALAR.bat"
           Copy-Item "Uninstall.bat" -Destination $distDir
           Copy-Item "README.md" -Destination $distDir
 
-          # Config opcional (se existir no repo)
-          if (Test-Path "config.txt") {
-            Copy-Item "config.txt" -Destination $distDir
-          }
+          # config.txt NAO e incluido no release publico (contem URL interna corporativa)
+          # A TI deve gerar o ZIP de distribuicao internamente usando Build_e_Empacotar.bat
 
           $zipName = "CorporateWallpaperAgent-${{ steps.version.outputs.TAG }}.zip"
           Compress-Archive -Path "$distDir\*" -DestinationPath $zipName -Force
@@ -81,11 +79,15 @@ jobs:
           body: |
             ## 📦 Corporate Wallpaper Agent ${{ steps.version.outputs.TAG }}
 
-            ### Instalação
-            1. Baixe o arquivo `.zip` abaixo
-            2. **Extraia** todos os arquivos para uma pasta
-            3. Dê duplo clique em `Install.bat`
-            4. Pronto! O papel de parede será atualizado automaticamente.
+            ### ⚠️ Atenção — Distribuição Interna (TI)
+            Este ZIP **não contém** o `config.txt` com a URL do servidor corporativo.
+            Para gerar o pacote completo de distribuição aos colaboradores, use o `Build_e_Empacotar.bat` internamente.
+
+            ### Instalação (após incluir o config.txt)
+            1. Baixe e extraia o `.zip`
+            2. Adicione o `config.txt` com a URL do servidor
+            3. Dê duplo clique em `CLIQUE AQUI PARA INSTALAR.bat`
+            4. Pronto — o papel de parede será atualizado automaticamente
 
             ### Desinstalação
             Rode o `Uninstall.bat` que está dentro do ZIP.
@@ -96,3 +98,4 @@ jobs:
             CorporateWallpaperAgent-${{ steps.version.outputs.TAG }}.zip
           draft: false
           prerelease: false
+
