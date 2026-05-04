@@ -1,4 +1,4 @@
-# Ignora os executáveis gerados localmente e arquivos temporários do usuário
+# Ignora executaveis, links e zips gerados localmente
 *.exe
 *.lnk
 *.zip
@@ -6,9 +6,14 @@
 bin/
 obj/
 .agent/
+dist_temp/
 
-# Ignora o config.txt de distribuição (contém URL interna do S3 corporativo)
+# Arquivo de configuracao com URL corporativa (NAO sobe pro GitHub)
 config.txt
 
-# Script interno de TI para empacotamento (nao relevante para o repositório público)
+# Ferramentas e arquivos internos de TI (NAO sobem pro GitHub)
 Build_e_Empacotar.bat
+WallpaperAgent.cs
+
+# Arquivos de teste extraidos de ZIPs (nao sao codigo fonte)
+SOMENTE CLIQUE AQUI PARA INSTALAR.bat

