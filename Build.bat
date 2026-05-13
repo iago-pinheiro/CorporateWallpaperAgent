@@ -18,6 +18,7 @@ copy /y "WallpaperAgent.ps1"   "dist_temp\WallpaperAgent.ps1"  >nul
 copy /y "WallpaperLauncher.vbs" "dist_temp\WallpaperLauncher.vbs" >nul
 copy /y "Install.bat"           "dist_temp\SOMENTE CLIQUE AQUI PARA INSTALAR.bat" >nul
 copy /y "Uninstall.bat"         "dist_temp\Uninstall.bat"         >nul
+copy /y "WallpaperDiagnostic.ps1" "dist_temp\WallpaperDiagnostic.ps1" >nul
 
 if exist "config.txt" (
     copy /y "config.txt" "dist_temp\config.txt" >nul
@@ -51,6 +52,8 @@ echo.
 echo  Conteudo do ZIP:
 echo    - SOMENTE CLIQUE AQUI PARA INSTALAR.bat
 echo    - WallpaperAgent.ps1
+echo    - WallpaperLauncher.vbs
+echo    - WallpaperDiagnostic.ps1
 if exist "config.txt" echo    - config.txt
 echo    - Uninstall.bat
 echo.

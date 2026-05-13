@@ -33,40 +33,41 @@ jobs:
           echo "VERSION=$version" >> $env:GITHUB_OUTPUT
           Write-Host "Versão detectada: $version"
 
-      - name: Compilar WallpaperAgent.exe
-        shell: cmd
-        run: |
-          set CSC_PATH=%WINDIR%\Microsoft.NET\Framework64\v4.0.30319\csc.exe
-          if not exist "%CSC_PATH%" set CSC_PATH=%WINDIR%\Microsoft.NET\Framework\v4.0.30319\csc.exe
-          "%CSC_PATH%" /nologo /target:winexe /optimize /out:WallpaperAgent.exe WallpaperAgent.cs
-          if errorlevel 1 exit /b 1
-          if not exist "WallpaperAgent.exe" exit /b 1
-          echo Compilação OK!
-
-      - name: Verificar EXE gerado
+      - name: Verificar arquivos do pacote
         shell: pwsh
         run: |
-          if (-not (Test-Path "WallpaperAgent.exe")) {
-            Write-Error "WallpaperAgent.exe não foi gerado!"
+          $required = @(
+            'WallpaperAgent.ps1',
+            'WallpaperLauncher.vbs',
+            'Install.bat',
+            'Uninstall.bat',
+            'README.md'
+          )
+          $missing = $required | Where-Object { -not (Test-Path $_) }
+          if ($missing) {
+            Write-Error "Arquivos ausentes: $($missing -join ', ')"
             exit 1
           }
-          $file = Get-Item "WallpaperAgent.exe"
-          Write-Host "EXE gerado: $($file.Length) bytes"
+          foreach ($f in $required) {
+            $file = Get-Item $f
+            Write-Host "OK: $($file.Name) ($($file.Length) bytes)"
+          }
 
-      - name: Montar pacote de distribuição (ZIP)
+      - name: Montar pacote de distribuicao (ZIP)
         shell: pwsh
         run: |
           $distDir = "dist"
           New-Item -ItemType Directory -Path $distDir -Force | Out-Null
 
           # Renomeia o Install.bat para nome amigavel ao colaborador
-          Copy-Item "WallpaperAgent.exe" -Destination $distDir
+          Copy-Item "WallpaperAgent.ps1" -Destination $distDir
+          Copy-Item "WallpaperLauncher.vbs" -Destination $distDir
           Copy-Item "Install.bat" -Destination "$distDir\CLIQUE AQUI PARA INSTALAR.bat"
           Copy-Item "Uninstall.bat" -Destination $distDir
           Copy-Item "README.md" -Destination $distDir
 
           # config.txt NAO e incluido no release publico (contem URL interna corporativa)
-          # A TI deve gerar o ZIP de distribuicao internamente usando Build_e_Empacotar.bat
+          # A TI deve gerar o ZIP de distribuicao internamente usando Build.bat
 
           $zipName = "CorporateWallpaperAgent-${{ steps.version.outputs.TAG }}.zip"
           Compress-Archive -Path "$distDir\*" -DestinationPath $zipName -Force
@@ -77,20 +78,20 @@ jobs:
         with:
           name: "Corporate Wallpaper Agent ${{ steps.version.outputs.TAG }}"
           body: |
-            ## 📦 Corporate Wallpaper Agent ${{ steps.version.outputs.TAG }}
+            ## Corporate Wallpaper Agent ${{ steps.version.outputs.TAG }}
 
-            ### ⚠️ Atenção — Distribuição Interna (TI)
-            Este ZIP **não contém** o `config.txt` com a URL do servidor corporativo.
-            Para gerar o pacote completo de distribuição aos colaboradores, use o `Build_e_Empacotar.bat` internamente.
+            ### Atencao — Distribuicao Interna (TI)
+            Este ZIP **nao contem** o `config.txt` com a URL do servidor corporativo.
+            Para gerar o pacote completo de distribuicao aos colaboradores, use o `Build.bat` internamente.
 
-            ### Instalação (após incluir o config.txt)
+            ### Instalacao (apos incluir o config.txt)
             1. Baixe e extraia o `.zip`
             2. Adicione o `config.txt` com a URL do servidor
-            3. Dê duplo clique em `CLIQUE AQUI PARA INSTALAR.bat`
-            4. Pronto — o papel de parede será atualizado automaticamente
+            3. De duplo clique em `CLIQUE AQUI PARA INSTALAR.bat`
+            4. Pronto — o papel de parede sera atualizado automaticamente
 
-            ### Desinstalação
-            Rode o `Uninstall.bat` que está dentro do ZIP.
+            ### Desinstalacao
+            Rode o `Uninstall.bat` que esta dentro do ZIP.
 
             ---
             _Release gerado automaticamente via GitHub Actions._
