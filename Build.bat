@@ -9,8 +9,24 @@ echo.
 
 cd /d "%~dp0"
 
-:: 1. Criar pasta temporaria de distribuicao
-echo [1/3] Montando arquivos do pacote...
+:: 1. Verificar arquivos essenciais de origem
+echo [1/3] Verificando e montando pacote...
+
+set BUILD_ERROR=0
+for %%F in ("WallpaperAgent.ps1" "WallpaperLauncher.vbs" "Install.bat" "Uninstall.bat") do (
+    if not exist "%%~F" (
+        echo [ERRO] %%~F nao encontrado!
+        set BUILD_ERROR=1
+    )
+)
+if %BUILD_ERROR%==1 (
+    color 0C
+    echo.
+    echo [ERRO] Arquivos essenciais ausentes. Abortando.
+    pause
+    exit /b
+)
+
 if exist "dist_temp" rmdir /s /q "dist_temp"
 mkdir "dist_temp"
 
@@ -23,6 +39,8 @@ copy /y "WallpaperDiagnostic.ps1" "dist_temp\WallpaperDiagnostic.ps1" >nul
 if exist "config.txt" (
     copy /y "config.txt" "dist_temp\config.txt" >nul
     echo     config.txt incluido no pacote.
+) else (
+    echo     AVISO: config.txt nao encontrado - URL padrao sera usada.
 )
 echo     OK! Arquivos copiados.
 

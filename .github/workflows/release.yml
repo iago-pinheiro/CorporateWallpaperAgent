@@ -64,6 +64,7 @@ jobs:
           Copy-Item "WallpaperLauncher.vbs" -Destination $distDir
           Copy-Item "Install.bat" -Destination "$distDir\CLIQUE AQUI PARA INSTALAR.bat"
           Copy-Item "Uninstall.bat" -Destination $distDir
+          Copy-Item "WallpaperDiagnostic.ps1" -Destination $distDir
           Copy-Item "README.md" -Destination $distDir
 
           # config.txt NAO e incluido no release publico (contem URL interna corporativa)
@@ -89,6 +90,9 @@ jobs:
             2. Adicione o `config.txt` com a URL do servidor
             3. De duplo clique em `CLIQUE AQUI PARA INSTALAR.bat`
             4. Pronto — o papel de parede sera atualizado automaticamente
+
+            ### Diagnostic (se algo der errado)
+            Execute o `WallpaperDiagnostic.ps1` e envie o arquivo gerado para o TI.
 
             ### Desinstalacao
             Rode o `Uninstall.bat` que esta dentro do ZIP.

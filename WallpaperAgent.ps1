@@ -99,11 +99,14 @@ while ($true) {
         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
         $wc = New-Object Net.WebClient
-        $wc.Proxy = [Net.WebRequest]::GetSystemWebProxy()
-        $wc.Proxy.Credentials = [Net.CredentialCache]::DefaultCredentials
-        $wc.Headers.Add("User-Agent", "Mozilla/5.0 CorporateWallpaperAgent/$version")
-        $wc.DownloadFile($url, $tempImage)
-        $wc.Dispose()
+        try {
+            $wc.Proxy = [Net.WebRequest]::GetSystemWebProxy()
+            $wc.Proxy.Credentials = [Net.CredentialCache]::DefaultCredentials
+            $wc.Headers.Add("User-Agent", "Mozilla/5.0 CorporateWallpaperAgent/$version")
+            $wc.DownloadFile($url, $tempImage)
+        } finally {
+            $wc.Dispose()
+        }
 
         if (-not (Test-ImageValid $tempImage)) {
             Write-Log "AVISO: Arquivo baixado nao e uma imagem JPEG/PNG valida. Ignorando."
