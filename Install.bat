@@ -241,6 +241,15 @@ if %errorlevel% EQU 0 (
 echo [%DATE% %TIME%] === FIM DA VERIFICACAO POS-INSTALACAO === >> "%LOG_FILE%"
 
 :: ============================================================
+:: PASSO 11: RE-VERIFICACAO (delay pra pegar AV deletando)
+:: ============================================================
+echo [%DATE% %TIME%] PASSO 11: Re-verificando apos 3 segundos... >> "%LOG_FILE%"
+timeout /t 3 /nobreak >nul
+call :check_file_verbose "%TARGET_DIR%\%SCRIPT_NAME%"
+call :check_file_verbose "%TARGET_DIR%\%LAUNCHER_NAME%"
+call :check_file_verbose "%TARGET_DIR%\%CONFIG_NAME%"
+
+:: ============================================================
 :: Resultado final
 :: ============================================================
 echo.
@@ -249,6 +258,7 @@ echo.
 if exist "%TARGET_DIR%\%SCRIPT_NAME%" if exist "%TARGET_DIR%\%LAUNCHER_NAME%" (
     echo TUDO PRONTO! O programa corporativo foi ativado com sucesso!
     echo O seu fundo de tela mudara sozinho agorinha mesmo :)
+    echo [%DATE% %TIME%] RESULTADO: Instalacao completa com sucesso >> "%LOG_FILE%"
 ) else (
     color 0E
     echo ATENCAO: A instalacao parece incompleta.
@@ -258,6 +268,7 @@ if exist "%TARGET_DIR%\%SCRIPT_NAME%" if exist "%TARGET_DIR%\%LAUNCHER_NAME%" (
     echo Causa provavel: Antivirus/Defender removeu os scripts.
     echo Solucao: Adicione excecao para a pasta:
     echo   %TARGET_DIR%
+    echo [%DATE% %TIME%] RESULTADO: Instalacao INCOMPLETA - AV pode ter removido arquivos >> "%LOG_FILE%"
 )
 echo.
 echo Essa tela fechara sozinha em instantes... Tenha um otimo dia!
@@ -280,7 +291,7 @@ goto :eof
 :check_file_verbose
 if exist "%~1" (
     for %%F in ("%~1") do (
-        echo [%DATE% %TIME%]   PRESENTE: %%~nxF (%%~zF bytes) >> "%LOG_FILE%"
+        echo [%DATE% %TIME%]   PRESENTE: %%~nxF - %%~zF bytes >> "%LOG_FILE%"
     )
 ) else (
     echo [%DATE% %TIME%]   AUSENTE: %~nx1 >> "%LOG_FILE%"
