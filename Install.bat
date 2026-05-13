@@ -14,13 +14,22 @@ cd /d "%~dp0"
 
 set TARGET_DIR=%LOCALAPPDATA%\CorpWallpaperSystem
 set SCRIPT_NAME=WallpaperAgent.ps1
+set LAUNCHER_NAME=WallpaperLauncher.vbs
 set REG_KEY=HKCU\Software\Microsoft\Windows\CurrentVersion\Run
 set REG_NAME=CorporateWallpaperAgent
 
-:: 1. Verificar se o script existe
+:: 1. Verificar se os arquivos existem
 if not exist "%SCRIPT_NAME%" (
     color 0C
     echo [ERRO] O arquivo %SCRIPT_NAME% nao esta na mesma pasta.
+    echo Certifique-se de extrair todos os arquivos do ZIP antes de rodar!
+    echo.
+    pause
+    exit /b
+)
+if not exist "%LAUNCHER_NAME%" (
+    color 0C
+    echo [ERRO] O arquivo %LAUNCHER_NAME% nao esta na mesma pasta.
     echo Certifique-se de extrair todos os arquivos do ZIP antes de rodar!
     echo.
     pause
@@ -35,12 +44,13 @@ timeout /t 2 /nobreak >nul
 :: 3. Criar pasta de instalacao
 if not exist "%TARGET_DIR%" mkdir "%TARGET_DIR%"
 
-:: 4. Copiar o script (com 3 tentativas)
+:: 4. Copiar o script e o launcher (com 3 tentativas)
 echo [+] Instalando o agente silencioso na maquina...
 set RETRIES=0
 
 :retry_copy
-copy /y "%SCRIPT_NAME%" "%TARGET_DIR%\%SCRIPT_NAME%" >nul 2>&1
+copy /y "%SCRIPT_NAME%"   "%TARGET_DIR%\%SCRIPT_NAME%"   >nul 2>&1
+copy /y "%LAUNCHER_NAME%" "%TARGET_DIR%\%LAUNCHER_NAME%" >nul 2>&1
 if exist "%TARGET_DIR%\%SCRIPT_NAME%" goto copy_ok
 
 set /a RETRIES+=1
@@ -63,26 +73,26 @@ exit /b
 
 :copy_ok
 
+:: Remover o bloqueio "Mark of the Web" (arquivo veio de ZIP baixado da internet)
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Unblock-File -Path '%TARGET_DIR%\%SCRIPT_NAME%'" >nul 2>&1
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Unblock-File -Path '%TARGET_DIR%\%LAUNCHER_NAME%'" >nul 2>&1
+
+:: Liberar execucao de scripts PS1 para o usuario atual (nao requer admin)
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned -Force" >nul 2>&1
+
 :: 5. Copiar config.txt se existir
 if exist "config.txt" (
     echo [+] Aplicando configuracoes personalizadas...
     copy /y "config.txt" "%TARGET_DIR%\config.txt" >nul 2>&1
 )
 
-:: 6. Registrar na inicializacao do Windows (HKCU - sem admin)
+:: 6. Registrar no startup via HKCU\Run (usa o VBS launcher para janela invisivel)
 echo [+] Registrando rotina silenciosa de atualizacao automatica...
-reg add "%REG_KEY%" /v "%REG_NAME%" /t REG_SZ /d "powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File \"%TARGET_DIR%\%SCRIPT_NAME%\"" /f >nul 2>&1
+reg add "%REG_KEY%" /v "%REG_NAME%" /t REG_SZ /d "wscript.exe \"%TARGET_DIR%\%LAUNCHER_NAME%\"" /f >nul 2>&1
 
-:: 7. Verificar se o registro foi criado
-reg query "%REG_KEY%" /v "%REG_NAME%" >nul 2>&1
-if errorlevel 1 (
-    echo [AVISO] Registro de inicializacao nao foi criado. O wallpaper funcionara,
-    echo         mas nao atualizara automaticamente apos reiniciar o PC.
-)
-
-:: 8. Executar o agente pela primeira vez (janela oculta)
+:: 7. Executar o agente pela primeira vez (janela 100%% invisivel via VBS)
 echo [+] Finalizando integracoes e configuracoes...
-start "" powershell.exe -WindowStyle Hidden -ExecutionPolicy Bypass -File "%TARGET_DIR%\%SCRIPT_NAME%"
+start "" wscript.exe "%TARGET_DIR%\%LAUNCHER_NAME%"
 
 echo.
 echo =================================================================

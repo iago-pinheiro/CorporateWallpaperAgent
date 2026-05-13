@@ -11,6 +11,7 @@ set REG_NAME=CorporateWallpaperAgent
 
 echo [1/3] Encerrando o Agente, se estiver em execucao...
 powershell -Command "Get-WmiObject Win32_Process | Where-Object { $_.CommandLine -like '*WallpaperAgent*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }" >nul 2>&1
+powershell -Command "Get-WmiObject Win32_Process | Where-Object { $_.CommandLine -like '*WallpaperLauncher*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force }" >nul 2>&1
 timeout /t 3 /nobreak >nul
 
 echo [2/3] Removendo o Agente da Inicializacao do Windows...

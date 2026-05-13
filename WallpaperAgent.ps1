@@ -3,8 +3,8 @@
 # Atualiza o papel de parede corporativo silenciosamente.
 # =============================================================
 
-$version          = "3.0.0"
-$checkIntervalHrs = 4
+$version          = "3.1.0"
+$checkIntervalHrs = 2
 $maxLogLines      = 100
 
 $workDir        = Join-Path $env:LOCALAPPDATA "CorpWallpaperSystem"
@@ -12,9 +12,20 @@ $logPath        = Join-Path $workDir "wallpaper_agent.log"
 $localImage     = Join-Path $workDir "wallpaper.jpg"
 $tempImage      = Join-Path $workDir "wallpaper_download.tmp"
 $configPath     = Join-Path $workDir "config.txt"
+$lockFile       = Join-Path $workDir "agent.lock"
 $defaultUrl     = "https://iago-pinheiro.github.io/wallpaper-download/wallpaper.jpg"
 
 if (-not (Test-Path $workDir)) { New-Item -ItemType Directory -Path $workDir -Force | Out-Null }
+
+# --- Mutex: evita multiplas instancias rodando ao mesmo tempo ---
+if (Test-Path $lockFile) {
+    $existingPid = Get-Content $lockFile -ErrorAction SilentlyContinue
+    if ($existingPid -and (Get-Process -Id $existingPid -ErrorAction SilentlyContinue)) {
+        exit 0  # ja existe uma instancia rodando, encerra esta
+    }
+}
+$PID | Set-Content $lockFile -Force
+
 
 # --- Helpers ---
 

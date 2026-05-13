@@ -14,9 +14,10 @@ echo [1/3] Montando arquivos do pacote...
 if exist "dist_temp" rmdir /s /q "dist_temp"
 mkdir "dist_temp"
 
-copy /y "WallpaperAgent.ps1"  "dist_temp\WallpaperAgent.ps1"  >nul
-copy /y "Install.bat"         "dist_temp\SOMENTE CLIQUE AQUI PARA INSTALAR.bat" >nul
-copy /y "Uninstall.bat"       "dist_temp\Uninstall.bat"        >nul
+copy /y "WallpaperAgent.ps1"   "dist_temp\WallpaperAgent.ps1"  >nul
+copy /y "WallpaperLauncher.vbs" "dist_temp\WallpaperLauncher.vbs" >nul
+copy /y "Install.bat"           "dist_temp\SOMENTE CLIQUE AQUI PARA INSTALAR.bat" >nul
+copy /y "Uninstall.bat"         "dist_temp\Uninstall.bat"         >nul
 
 if exist "config.txt" (
     copy /y "config.txt" "dist_temp\config.txt" >nul
