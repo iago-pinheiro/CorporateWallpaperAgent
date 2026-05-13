@@ -62,7 +62,7 @@ Mande o ZIP por email, Teams, ou pasta compartilhada.
 Peca para a colaboradora rodar o diagnostico:
 
 ```
-Clique com botao direito no WallpaperDiagnostic.ps1 → "Executar com PowerShell"
+Dentro da pasta extraida, de dois cliques em "Diagnostico.bat"
 ```
 
 Ela vai gerar o arquivo `%TEMP%\CorpWallpaper_Diagnostic.txt`. Peca para te enviar.
@@ -104,10 +104,10 @@ Com esse arquivo, voce descobre rapidinho a causa:
 **Nao se preocupe.** Faca isso:
 
 ```
-1. Dentro da pasta extraida, procure o arquivo "WallpaperDiagnostic.ps1"
-2. Clique com BOTAO DIREITO nele → escolha "Executar com PowerShell"
-3. Uma janela preta vai aparecer com varias informacoes
-4. Quando terminar, vai aparecer o caminho de um arquivo gerado
+1. Dentro da pasta extraida, de DOIS CLIQUES em "Diagnostico.bat"
+2. Uma janela preta aparece com varias informacoes
+3. Quando terminar, aperte qualquer tecla
+4. Vai abrir uma pasta com o arquivo "CorpWallpaper_Diagnostic.txt"
 5. Me envie esse arquivo (por email ou Teams)
 ```
 

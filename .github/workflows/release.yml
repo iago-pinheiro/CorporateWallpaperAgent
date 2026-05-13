@@ -65,6 +65,7 @@ jobs:
           Copy-Item "Install.bat" -Destination "$distDir\CLIQUE AQUI PARA INSTALAR.bat"
           Copy-Item "Uninstall.bat" -Destination $distDir
           Copy-Item "WallpaperDiagnostic.ps1" -Destination $distDir
+          Copy-Item "Diagnostico.bat" -Destination $distDir
           Copy-Item "README.md" -Destination $distDir
 
           # config.txt NAO e incluido no release publico (contem URL interna corporativa)
