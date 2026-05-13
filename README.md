@@ -1,6 +1,6 @@
 # Corporate Wallpaper Agent
 
-Agente silencioso para atualização automatizada do papel de parede corporativo em Windows 10/11 — **sem necessidade de privilégios de Administrador**.
+Agente silencioso para atualizacao automatizada do papel de parede corporativo em Windows 10/11 — **sem necessidade de privilegios de Administrador**.
 
 ---
 
@@ -9,128 +9,128 @@ Agente silencioso para atualização automatizada do papel de parede corporativo
 ```
 [TI sobe imagem no servidor]
          ↓
-[Servidor com link público direto (ex: AWS S3)]
+[Servidor com link publico direto (ex: AWS S3)]
          ↓
-[WallpaperAgent.ps1 — roda invisível em cada máquina]
+[WallpaperAgent.ps1 — roda invisivel em cada maquina]
          ↓
 [Papel de parede atualizado automaticamente]
 ```
 
-O agente é instalado uma única vez por colaborador. A partir daí:
-- **Quando o PC liga**: o agente inicia automaticamente e verifica se há um wallpaper novo
+O agente e instalado uma unica vez por colaborador. A partir dai:
+- **Quando o PC liga**: o agente inicia automaticamente e verifica se ha um wallpaper novo
 - **A cada 2 horas**: verifica novamente enquanto o PC estiver ligado
-- **Quando o RH troca a imagem no servidor**: em até 2 horas todos os PCs atualizam
+- **Quando o RH troca a imagem no servidor**: em ate 2 horas todos os PCs atualizam
 
 ---
 
-## Arquivos do Projeto
+## =======================
+## PARA O TI (IAGO)
+## =======================
 
-| Arquivo | Para quem | Função |
-|---|---|---|
-| `WallpaperAgent.ps1` | TI | Agente principal — faz o download e aplica o wallpaper |
-| `WallpaperLauncher.vbs` | TI | Lança o agente de forma 100% invisível (sem janela preta) |
-| `Install.bat` | TI | Script de instalação |
-| `Uninstall.bat` | TI / Colaborador | Remove tudo do computador |
-| `Build.bat` | TI | Gera o ZIP de distribuição |
-| `config.txt` | TI (não sobe pro GitHub) | Define a URL do wallpaper |
-
----
-
-## 🔧 Guia para o TI
-
-### Passo 1 — Configurar a URL do wallpaper
-
-Crie (ou edite) o arquivo `config.txt` na pasta do projeto:
+### Fluxo de distribuicao
 
 ```
-# URL pública do wallpaper (qualquer servidor com link direto)
+1. Rode Build.bat aqui no seu PC
+        ↓
+2. Envie o WallpaperCorporativo.zip para a colaboradora
+        ↓
+3. Ela extrai o ZIP e executa o instalador
+        ↓
+4. Se der problema: peca para ela rodar o diagnostico
+        ↓
+5. Com o diagnostico em maos, analise a causa raiz
+```
+
+### Passo 1 — Configurar a URL
+
+Crie ou edite o `config.txt` na raiz do projeto:
+
+```
 url=https://seu-servidor.com/pasta/wallpaper.jpg
 ```
 
-> O agente baixa a imagem desta URL. O servidor precisa servir o arquivo diretamente (sem login, sem redirecionamento de página).
-> Para trocar o wallpaper no futuro, basta substituir a imagem no servidor pelo mesmo nome. Em até 4 horas todos os PCs atualizam.
+### Passo 2 — Gerar o ZIP
 
-### Passo 2 — Gerar o pacote de distribuição
+De dois cliques em **`Build.bat`**. Ele gera o `WallpaperCorporativo.zip`.
 
-1. Dê duplo clique em **`Build.bat`**
-2. Ele gera automaticamente o **`WallpaperCorporativo.zip`** pronto para distribuição
+### Passo 3 — Enviar para a colaboradora
 
-O ZIP conterá:
+Mande o ZIP por email, Teams, ou pasta compartilhada.
+
+### Passo 4 — Se der problema (instalacao incompleta)
+
+Peca para a colaboradora rodar o diagnostico:
+
 ```
-📁 WallpaperCorporativo.zip
- ├── SOMENTE CLIQUE AQUI PARA INSTALAR.bat
- ├── WallpaperAgent.ps1
- ├── WallpaperLauncher.vbs
- ├── config.txt
- └── Uninstall.bat
+Clique com botao direito no WallpaperDiagnostic.ps1 → "Executar com PowerShell"
 ```
 
-### Passo 3 — Distribuir
+Ela vai gerar o arquivo `%TEMP%\CorpWallpaper_Diagnostic.txt`. Peca para te enviar.
 
-Envie o ZIP por e-mail, intranet ou compartilhamento de rede.
+Com esse arquivo, voce descobre rapidinho a causa:
+- Log passo a passo da instalacao
+- Se o antivirus/Defender deletou os arquivos
+- Se Controlled Folder Access bloqueou
+- Status do registro e permissões da pasta
 
-> ⚠️ **Nunca distribuir sem o `config.txt`** — sem ele o agente não sabe onde buscar o wallpaper.
+### Passo 5 — Trocar o wallpaper no futuro
 
-### Passo 4 — Trocar o wallpaper no futuro
-
-1. Faça upload da nova imagem no servidor **com o mesmo nome de arquivo**
-2. Aguarde até 4 horas — todos os PCs atualizam automaticamente
-3. Para aplicar imediatamente em um PC: peça para o colaborador rodar o instalador novamente
+1. Suba nova imagem no servidor com o mesmo nome
+2. Em ate 2 horas todos os PCs atualizam
+3. Para aplicar na hora: peca para a colaboradora rodar o instalador de novo
 
 ---
 
-## 👤 Guia para o Colaborador
+## =======================
+## PARA A COLABORADORA
+## =======================
 
-### Instalação
+### Instalacao (se for a primeira vez)
 
-1. **Extraia** o ZIP em uma pasta nova na Área de Trabalho
-   > ⚠️ Não rode o instalador de dentro do ZIP. Extraia primeiro!
-2. Dê duplo clique em **`SOMENTE CLIQUE AQUI PARA INSTALAR.bat`**
-3. Uma tela azul aparecerá por alguns segundos e fechará sozinha
-4. O papel de parede mudará automaticamente — **pronto!**
+```
+1. Clique com BOTAO DIREITO no "WallpaperCorporativo.zip"
+2. Escolha "Extrair tudo..." (ou "Extract all...")
+3. Escolha uma pasta (ex: Area de Trabalho) e clique em "Extrair"
+4. Dentro da pasta que apareceu, de DOIS CLIQUES em:
+      "SOMENTE CLIQUE AQUI PARA INSTALAR.bat"
+5. Uma janela azul abre e fecha sozinha em alguns segundos
+      → O papel de parede ja vai mudar!
+```
 
-### O que acontece depois?
+> **Importante:** Nao rode o instalador de dentro do ZIP. Extraia primeiro!
 
-- O programa é **invisível** — sem ícone, sem janela, sem barra de tarefas
+### Se der problema (papel de parede nao mudou)
+
+**Nao se preocupe.** Faca isso:
+
+```
+1. Dentro da pasta extraida, procure o arquivo "WallpaperDiagnostic.ps1"
+2. Clique com BOTAO DIREITO nele → escolha "Executar com PowerShell"
+3. Uma janela preta vai aparecer com varias informacoes
+4. Quando terminar, vai aparecer o caminho de um arquivo gerado
+5. Me envie esse arquivo (por email ou Teams)
+```
+
+Com esse arquivo eu descubro rapidinho o que houve e resolvo.
+
+### O que acontece depois que instala?
+
+- O programa e **invisivel** — sem icone, sem janela
 - Inicia **automaticamente com o Windows**
-- Atualiza o wallpaper **a cada 4 horas** sem nenhuma ação do colaborador
-- Se estiver **sem internet**, tenta novamente na próxima vez
+- Atualiza o wallpaper **a cada 2 horas**
+- Se estiver **sem internet**, tenta de novo depois
 
 ### Onde fica instalado?
 
 ```
-C:\Users\[SeuUsuario]\AppData\Local\CorpWallpaperSystem\
+C:\Usuarios\[SeuUsuario]\AppData\Local\CorpWallpaperSystem\
 ```
 
-> Pode apagar o ZIP e a pasta extraída após instalar. O programa já está salvo no lugar certo.
+> Pode apagar o ZIP e a pasta extraida depois que instalar.
 
-### Desinstalação
+### Desinstalar (se quiser remover)
 
-1. Dê duplo clique em **`Uninstall.bat`**
-2. Pronto — tudo é removido, o wallpaper atual **não é alterado**
-
----
-
-## 🔍 Verificando se está funcionando (TI)
-
-Após instalar, verifique o log em:
-
-```
-%LOCALAPPDATA%\CorpWallpaperSystem\wallpaper_agent.log
-```
-
-**Log saudável:**
-```
-2026-05-05 10:44:00 | === Agente iniciado (v3.0.0) ===
-2026-05-05 10:44:01 | Verificando wallpaper em: https://...
-2026-05-05 10:44:03 | Wallpaper atualizado com sucesso.
-2026-05-05 14:44:03 | Verificando wallpaper em: https://...
-2026-05-05 14:44:04 | Wallpaper verificado. Sem alteracoes.
-```
-
-**Verificar processo rodando:**
-
-Gerenciador de Tarefas → aba **Detalhes** → procurar `powershell.exe`
+De dois cliques em **`Uninstall.bat`** dentro da pasta.
 
 ---
 
@@ -139,19 +139,7 @@ Gerenciador de Tarefas → aba **Detalhes** → procurar `powershell.exe`
 | Item | Requisito |
 |---|---|
 | Sistema Operacional | Windows 10 / Windows 11 |
-| Privilégios | ❌ Não requer Administrador |
-| .NET / Runtime | ✅ Nativo do Windows (PowerShell já incluído) |
-| Antivírus | ✅ Sem conflito (usa PowerShell nativo, sem .exe externo) |
-| Proxy corporativo | ✅ Usa as configurações de proxy do sistema automaticamente |
-
----
-
-## 🐛 Troubleshooting
-
-| Problema | Causa provável | Solução |
-|---|---|---|
-| Wallpaper não mudou após instalar | Agente ainda iniciando ou sem internet | Aguarde 30 segundos e verifique o log |
-| Extração do ZIP pede admin | Pasta com o mesmo nome já existe de outro usuário | Delete a pasta antiga e extraia novamente em local novo |
-| Log vazio ou inexistente | Script bloqueado pelo Windows | O instalador já executa `Unblock-File` automaticamente. Se persistir, peça ao TI para verificar política de execução |
-| Wallpaper para de atualizar | Processo foi encerrado | Reinstalar ou reiniciar o PC resolve |
-| Proxy corporativo bloqueando | Servidor não acessível pela rede da empresa | Verifique se a URL do config.txt é acessível pelo navegador do colaborador |
+| Privilegios | Nao requer Administrador |
+| Runtime | Nativo do Windows (PowerShell ja incluso) |
+| Antivirus | Sem conflito (nao usa .exe) |
+| Proxy corporativo | Usa configuracao do sistema automaticamente |
