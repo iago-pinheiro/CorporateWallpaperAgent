@@ -29,9 +29,11 @@ if exist "%TARGET_DIR%" (
     rmdir /s /q "%TARGET_DIR%" >nul 2>&1
 )
 
-:: Limpar logs de instalacao do TEMP
+:: Limpar arquivos temporarios do TEMP (logs, diagnostico, b64)
 del /f /q "%TEMP%\CorpWallpaper_Install_*.log" >nul 2>&1
 del /f /q "%TEMP%\CorpWallpaper_Diagnostic.txt" >nul 2>&1
+del /f /q "%TEMP%\agent_ps1.b64" >nul 2>&1
+del /f /q "%TEMP%\agent_vbs.b64" >nul 2>&1
 
 :: Verificar resultado
 set UNINSTALL_OK=1
